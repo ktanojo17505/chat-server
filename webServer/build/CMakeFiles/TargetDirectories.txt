@@ -1,0 +1,3 @@
+/Users/kiaratanojo/Desktop/chat-app/webServer/build/CMakeFiles/rebuild_cache.dir
+/Users/kiaratanojo/Desktop/chat-app/webServer/build/CMakeFiles/edit_cache.dir
+/Users/kiaratanojo/Desktop/chat-app/webServer/build/CMakeFiles/server.dir
