@@ -4,6 +4,11 @@
 #include <libwebsockets.h>
 #endif
 
+#include <iostream>
+#include <istream>
+#include <streambuf>
+#include <string>
+#include <sstream>
 #include <string.h>
 
 /* one of these created for each message */
@@ -105,31 +110,51 @@ callback_minimal(struct lws *wsi, enum lws_callback_reasons reason,
                 if (vhd->amsg.payload)
                         __minimal_destroy_message(&vhd->amsg);
 
-                vhd->amsg.len = len;
+                std::string request((char *) in, (char *) in + len);
+                std::istringstream ss(request);
+
+                std::string requestType; 
+                // use 5 get lines to parse the http request 
+                std::string path; 
+                std::string contentType; 
+                std::string contentLenStr; 
+                std::string empty; 
+                std::string content; 
+                
+                std::getline(ss, path, '\n');
+                int pathStart = path.find(" ") + 1; // don't want to include the space 
+                int pathEnd = path.find(" ", pathStart);
+                requestType = path.substr(0, pathStart-1); // don't want to include the space
+                path = path.substr(pathStart, pathEnd - pathStart); 
+                
+                std::getline(ss, contentType, '\n');
+
+                std::getline(ss, contentLenStr, '\n');
+
+                std::getline(ss, empty, '\n');
+                std::getline(ss, content, '\n');
+                
+                std::cout << content << "\n";
+                vhd->amsg.len = content.length();
                 /* notice we over-allocate by LWS_PRE */
-                vhd->amsg.payload = malloc(LWS_PRE + len);
+                vhd->amsg.payload = malloc(LWS_PRE + content.length()+1);
+
                 if (!vhd->amsg.payload) {
                         lwsl_user("OOM: dropping\n");
                         break;
                 }
                 
-                // char *buf = (char *)malloc(LWS_PRE +len);
-                // for (int i = 0; i < len; i++){
-                //     buf[LWS_PRE + (len - 1) - i] = ((char *) in)[i];
-                // }
-
-                printf("recieved data: %.*s", (int) len, (char *) in);
-                memcpy((char *)vhd->amsg.payload + LWS_PRE, in, len);
+                memcpy((char *)vhd->amsg.payload + LWS_PRE, content.c_str(), content.length()+1);
+                printf("returning: %.*s\n", content.length(), (char *) vhd->amsg.payload + LWS_PRE);
                 vhd->current++;
 
-                
                 /*
                  * let everybody know we want to write something on them
                  * as soon as they are ready
                  */
                 lws_start_foreach_llp(struct per_session_data__minimal **,
                                       ppss, vhd->pss_list) {
-                        if (*ppss != pss){
+                        if ((path == "/new-user") || (path == "/message" && *ppss != pss)){
                                 lws_callback_on_writable((*ppss)->wsi);
                         }
                         // lws_callback_on_writable((*ppss)->wsi);
